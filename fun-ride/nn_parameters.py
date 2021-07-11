@@ -1,0 +1,10 @@
+n_inner_neurons = 10
+n_generations = 100
+n_bots = 40
+mutation_prob = 0.4
+max_mutation_percent = 0.2
+inversion = 1
+g_positive =0.3
+g_negative = 0,0
+velocity = 0.1
+steepness = 0.0
