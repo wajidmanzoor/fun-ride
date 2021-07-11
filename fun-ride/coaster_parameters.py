@@ -4,6 +4,7 @@ min_height = 0
 intial_velocity = 30
 max_velocity = 5 #after drop
 intial_track_angle = 0
+tracksegment_lenght = 1
 track_lenght = 120
 friction_coef = 0.01
 drag_coef = 0.3
