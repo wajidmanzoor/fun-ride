@@ -81,15 +81,15 @@ class NN_Model():
         self.y_nodes[k+1,j] = self.y_nodes[k,j]+delta_y
         return delta_x,delta_y
     def compute_generation_outputs(self,i,j,k,track_angle,delta_y,delta_energy):
-        self.generation_output[1,j,k] = self.next_input[1,j,k]*(2*self.g*self.max_height)-2*(self.g*delta_y+delta_energy)
-        self.generation_output[2,j,k] = self.next_input[2,j,k]*self.max_height+delta_y
-        self.generation_output[3,j,k] = self.next_input[3,j,k]*self.g*self.max_height-delta_energy
-        self.generation_output[4,j,k] = track_angle*np.pi
+        self.generation_output[0,j,k] = self.next_input[0,j,k]*(2*self.g*self.max_height)-2*(self.g*delta_y+delta_energy)
+        self.generation_output[1,j,k] = self.next_input[1,j,k]*self.max_height+delta_y
+        self.generation_output[2,j,k] = self.next_input[2,j,k]*self.g*self.max_height-delta_energy
+        self.generation_output[3,j,k] = track_angle*np.pi
     def update_inputs(self,i,j,k):
-        self.next_input[1,j,k+1] = self.generation_output[1,j,k]/(2*self.g*self.max_height)
-        self.next_input[2,j,k+1] = self.generation_output[2,j,k]/self.max_height
-        self.next_input[3,j,k+1] = self.generation_output[3,j,k]/(self.g*self.max_height)
-        self.next_input[4,j,k+1] = self.generation_output[4,j,k]/np.pi
+        self.next_input[0,j,k+1] = self.generation_output[0,j,k]/(2*self.g*self.max_height)
+        self.next_input[1,j,k+1] = self.generation_output[1,j,k]/self.max_height
+        self.next_input[2,j,k+1] = self.generation_output[2,j,k]/(self.g*self.max_height)
+        self.next_input[3,j,k+1] = self.generation_output[3,j,k]/np.pi
     def compute_segment_radius(self,i,j,k):
         delta_1_i = np.tan(self.track_angles[k,j])
         delta_1_f = np.tan(self.track_angles[k+1,j])
@@ -107,14 +107,40 @@ class NN_Model():
         return radius
 
     def compute_energy_loss(self,i,j,k,radius,drag_coeff,friction_coeff):
-        centri_acc = self.generation_output[1,j,k]/(self.g*radius)
+        centri_acc = self.generation_output[0,j,k]/(self.g*radius)
         normal_force = abs(radius+np.cos(self.track_angles[k,j]))
-        delta_energy = (friction_coeff*normal_force+drag_coeff*0.6125*self.generation_output[1,j,k]/10000)*self.tracksegment_lenght
+        delta_energy = (friction_coeff*normal_force+drag_coeff*0.6125*self.generation_output[0,j,k]/10000)*self.tracksegment_lenght
         return delta_energy
 
+    def compute_roc(self,i,j):
+        self.roc[0,j] = np.inf
+        self.roc[self.n_tracksegments+1,j] = np.inf
+        for k in range(1,self.n_tracksegments):
+            self.y_splines_deri_2[k,j]= (np.tan(self.track_angles[k+1,j])-np.tan(self.track_angles[k,j]))/(0.5(self.x_nodes[k+1,j]-self.x_nodes[k-1,j]))
+            a = np.sqrt((self.x_nodes[k,j]-self.x_nodes[k-1,j])^2 + (self.y_nodes[k,j]-self.y_nodes[k-1,j])^2)
+            b = np.sqrt((self.x_nodes[k+1,j]-self.x_nodes[k,j])^2 + (self.y_nodes[k+1,j]-self.y_nodes[k,j])^2)
+            c = np.sqrt((self.x_nodes[k+1,j]-self.x_nodes[k-1,j])^2 + (self.y_nodes[k+1,j]-self.y_nodes[k-1,j])^2)
+            s = 0.5*(a+b+c)
+            tar = np.sqrt(s*(s-a)*(s-b)*(s-c))
+            if self.x_nodes[k,j]>self.x_nodes[k-1,j]:
+                if self.y_splines_deri_2[k,j]>0:
+                    self.roc[k,j] = (a*b*c)/(4*tar)
+                else:
+                    self.roc[k,j] = -(a*b*c)/(4*tar)
+            else:
+                if self.y_splines_deri_2[k,j]>0:
+                    self.roc[k,j] = -(a*b*c)/(4*tar)
+                else:
+                    self.roc[k,j] = (a*b*c)/(4*tar)
+        for k in range(1,self.n_tracksegments):
+            if self.roc[k-1,j] >0 and self.roc[k+1,j]>0 and self.roc[k,j]<0:
+                self.roc[k,j]=-1*self.roc[k,j]
+            elif self.roc[k-1,j] <0 and self.roc[k+1,j]<0 and self.roc[k,j]>0:
+                self.roc[k,j]=-1*self.roc[k,j]
+    def compute_velocities(self,i,j):
+        for k in range(self.n_tracksegments):
+            self.velocities[k+1,j]=self.generation_output[0,j,k]^(1/2)
 
-
-    
     def run(self,n_generations,drag_coeff,friction_coeff):
         for i in range(n_generations):
             for j in range(self.n_bots):
@@ -126,6 +152,15 @@ class NN_Model():
                     self.update_inputs(i,j,k)
                     radius = self.compute_segment_radius(i,j,k)
                     delta_energy = self.compute_energy_loss(i,j,k,radius,drag_coeff,friction_coeff)
+            for j in range(self.n_bots):
+                self.y_splines = self.y_nodes
+                for k in range(self.n_tracksegments):
+                    self.y_splines_deri_1[k,j] = 0.5*np.tan(self.track_angles[k+1,j])+np.tan(self.track_angles[k,j])
+                self.y_splines_deri_1[self.n_tracksegments,j]=np.tan(self.track_angles[k,j])
+                self.compute_roc(i,j)
+                self.compute_velocities(i,j)
+                self.centripetal_acc = (self.velocities^2)/(self.g*self.roc)
+
 
 
 
