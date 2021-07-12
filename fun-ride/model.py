@@ -140,7 +140,9 @@ class NN_Model():
     def compute_velocities(self,i,j):
         for k in range(self.n_tracksegments):
             self.velocities[k+1,j]=self.generation_output[0,j,k]^(1/2)
-
+    def compute_gforce(self,i,j):
+        for k in range(self.n_tracksegments+1):
+            self.g_force = self.centripetal_acc[k,j]+np.cos(self.track_angles[k,j])
     def run(self,n_generations,drag_coeff,friction_coeff):
         for i in range(n_generations):
             for j in range(self.n_bots):
@@ -160,6 +162,9 @@ class NN_Model():
                 self.compute_roc(i,j)
                 self.compute_velocities(i,j)
                 self.centripetal_acc = (self.velocities^2)/(self.g*self.roc)
+                self.compute_gforce(i,j)
+                
+
 
 
 
