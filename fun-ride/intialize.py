@@ -39,20 +39,23 @@ weights_3 = np.zeros((n_inner_neurons,1,n_bots))
 bias_1 = np.zeros((1,n_inner_neurons,n_bots))
 bias_2 = np.zeros((1,n_inner_neurons,n_bots))
 
-for i in range(n_bots):
-    for j in range(n_tracksegments):
-        next_input[:,i,j]=input_vector
+def intialize_next_input(next_input,input_vector):
+    for i in range(n_bots):
+        for j in range(n_tracksegments):
+            next_input[:,i,j]=input_vector
+    return next_input
 
+def intialize_weights_biases(weights_1,weights_2,weights_3,bias_1,bias_2):
+    for i in range(n_bots):
+        for j in range(len(input_vector)):
+            for k in range(n_inner_neurons):
+                weights_1[j,k,i] = 2*np.random.random()-1
 
-for i in range(n_bots):
-    for j in range(len(input_vector)):
-        for k in range(n_inner_neurons):
-            weights_1[j,k,i] = 2*np.random.random()-1
-
-    for j in range(n_inner_neurons):
-        for k in range(n_inner_neurons):
-            weights_2[j,k,i] = 2*np.random.random()-1
-    for j in range(n_inner_neurons):
-        weights_3[j,1,i] = 2*np.random.random()-1
-        bias_1[1,j,i] = 2*np.random.random()-1
-        bias_2[1,j,i] = 2*np.random.random()-1
+        for j in range(n_inner_neurons):
+            for k in range(n_inner_neurons):
+                weights_2[j,k,i] = 2*np.random.random()-1
+        for j in range(n_inner_neurons):
+            weights_3[j,1,i] = 2*np.random.random()-1
+            bias_1[1,j,i] = 2*np.random.random()-1
+            bias_2[1,j,i] = 2*np.random.random()-1
+    return weights_1,weights_2,weights_3,bias_1,bias_2
