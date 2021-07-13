@@ -198,7 +198,34 @@ class NN_Model():
                 self.score[j,0] -= 1
                 self.score_breakdown[6,j] -= 1
     
-    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force,gpositive,gnegative,min_height):
+    def update_velocity_score(self,i,j,k,inversion,alpha):
+        if np.isreal(self.velocities[k,j]):
+            self.score[j,0] += alpha*(self.velocities[k,j]/(2*self.g*self.max_height))
+            self.score_breakdown[8,j] += alpha*(self.velocities[k,j]/(2*self.g*self.max_height))
+        else:
+            if inversion:
+                self.score[j,0] -= 100
+                self.score_breakdown[7,j] -= 100
+            else:
+                self.score[j,0] -= 1
+                self.score_breakdown[7,j] -= 1
+
+    def penalty_for_velocity_voilation(self,i,j,k,min_drop_velocity,inversion):
+        if self.velocities[k,j] > min_drop_velocity and self.intial_velocity == 0:
+            self.intial_velocity =1
+        if self.velocities[k,j] < min_drop_velocity and self.intial_velocity == 1:
+            if inversion:
+                self.score[j,0]-=100
+                self.score_breakdown[9,j] -= 100
+            else:
+                self.score[j,0] -= 1
+                self.score_breakdown[9,j] -= 1
+
+    def update_steepness_score(self,i,j,k,beta):
+        self.score[j,0] += beta*abs((self.y_splines[k+1,j]-self.y_splines[k,j])/(5*self.tracksegment_lenght))
+        self.score_breakdown[10,j] += beta*abs((self.y_splines[k+1,j]-self.y_splines[k,j])/(5*self.tracksegment_lenght))
+
+    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force,gpositive,gnegative,min_height,min_drop_velocity,alpha,beta):
         for i in range(n_generations):
             for j in range(self.n_bots):
                 delta_energy = 0
@@ -225,7 +252,9 @@ class NN_Model():
                     self.update_inversion_score(i,j,k,inversion,g_force)
                     self.penalty_for_height_voilation(i,j,k,min_height,inversion)
                     self.update_gforce_score(i,j,k,g_force,gpositive,gnegative,inversion)
-                
+                    self.update_velocity_score(i,j,k,inversion,alpha)
+                    self.penalty_for_velocity_voilation(i,j,k,min_drop_velocity,inversion)
+                    self.update_steepness_score(i,j,k,beta)
 
 
 
