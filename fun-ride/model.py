@@ -51,6 +51,11 @@ class NN_Model():
 
         self.bias_1 = np.zeros((1,n_inner_neurons,n_bots))
         self.bias_2 = np.zeros((1,n_inner_neurons,n_bots))
+        self.score = np.zeros((self.n_bots,1))
+        self.score_breakdown = np.zeros((11,self.n_bots))
+        self.loop_up = np.zeros((self.n_bots,1))
+        self.loop_down = np.zeros((self.n_bots,1))
+
         for i in range(n_bots):
             for j in range(self.n_tracksegments):
                 self.next_input[:,i,j]=self.input_vector
@@ -143,7 +148,26 @@ class NN_Model():
     def compute_gforce(self,i,j):
         for k in range(self.n_tracksegments+1):
             self.g_force = self.centripetal_acc[k,j]+np.cos(self.track_angles[k,j])
-    def run(self,n_generations,drag_coeff,friction_coeff):
+    def penalty_for_moving_sideways(self,i,j,k,inversion,intial):
+        if self.x_nodes[k+1,j] < self.x_nodes[k,j] and inversion is False:
+            self.score[j,0] -= 1
+            self.score_breakdown[0,j] -= 1
+        if self.x_nodes[k,j] < -self.intial_height/2  and inversion is True:
+            self.score[j,1] -= 100
+            self.score_breakdown -= 100
+    
+    def update_inversion_score(self,i,j,k,inversion,g_force):
+        '''g_force tuple specifying range (min,max)'''
+        if self.x_nodes[k+1,j] < self.x_nodes[k,j] and self.x_nodes[k+1,j] > 0 and self.y_nodes[k+1,j] < self.max_height and self.y_splines_deri_1[k,j] < 0 and self.roc[k,j] > 0 and self.g_force[k,j] <=  g_force[1] and self.g_force[k,j] >= g_force[0] and self.loop_up[j,0] == 0 and inversion is True:
+            self.score[j,0] +=9000
+            self.score_breakdown[1,j] +=9000
+            self.loop_up[j,0] = 1 
+        if self.x_nodes[k+1,j] < self.x_nodes[k,j] and self.x_nodes[k+1,j]  > 0 and self.y_nodes[k+1,j] < self.max_height and self.y_splines_deri_1[k,j] > 0 and self.roc[k,j] > 0 and self.g_force[k,j] <= g_force[1] and self.g_force[k,j] >= g_force[0] and self.loop_up[j,0] > 0 and self.loop_down[j,0] ==0 and inversion is True:
+            self.score[j,0] +=1000
+            self.score_breakdown[1,j] += 1000
+            self.loop_down[j,0] = 1 
+
+    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force):
         for i in range(n_generations):
             for j in range(self.n_bots):
                 delta_energy = 0
@@ -163,6 +187,12 @@ class NN_Model():
                 self.compute_velocities(i,j)
                 self.centripetal_acc = (self.velocities^2)/(self.g*self.roc)
                 self.compute_gforce(i,j)
+            for j in range(self.n_bots):
+                min_velocity = 0
+                for k in range(self.n_tracksegments):
+                    self.penalty_for_moving_sideways(i,j,k,inversion)
+                    self.update_inversion_score(i,j,k,inversion,g_force)
+
                 
 
 
