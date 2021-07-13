@@ -220,12 +220,23 @@ class NN_Model():
             else:
                 self.score[j,0] -= 1
                 self.score_breakdown[9,j] -= 1
+    def sort_normalize_score(self,n=5,verbose=True):
+        sorted_score , sorted_ind = np.sort(self.score,axis=None)[::-1],np.argsort(self.score,axis=None)[::-1]
+        if np.sum(self.loop_up[sorted_ind[0:min(self.n_bots,n)],0]) >0 or np.sum(self.loop_down[sorted_ind[0:min(self.n_bots,n)],0]) >0:
+            sorted_score /=10100
+        else:
+            sorted_score /=10
+        if verbose:
+            for i in range(min(self.n_bots,n)):
+                print(f'{i} Top Score: {sorted_score[i]}')
+        return sorted_score
+
 
     def update_steepness_score(self,i,j,k,beta):
         self.score[j,0] += beta*abs((self.y_splines[k+1,j]-self.y_splines[k,j])/(5*self.tracksegment_lenght))
         self.score_breakdown[10,j] += beta*abs((self.y_splines[k+1,j]-self.y_splines[k,j])/(5*self.tracksegment_lenght))
 
-    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force,gpositive,gnegative,min_height,min_drop_velocity,alpha,beta):
+    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force,gpositive,gnegative,min_height,min_drop_velocity,alpha,beta,n,verbose=True):
         for i in range(n_generations):
             for j in range(self.n_bots):
                 delta_energy = 0
@@ -255,7 +266,7 @@ class NN_Model():
                     self.update_velocity_score(i,j,k,inversion,alpha)
                     self.penalty_for_velocity_voilation(i,j,k,min_drop_velocity,inversion)
                     self.update_steepness_score(i,j,k,beta)
-
+                    sorted_score = self.sort_normalize_score(n,verbose)
 
 
 
