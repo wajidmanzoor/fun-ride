@@ -167,7 +167,38 @@ class NN_Model():
             self.score_breakdown[1,j] += 1000
             self.loop_down[j,0] = 1 
 
-    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force):
+    def penalty_for_height_voilation(self,i,j,k,min_height,inversion):
+        if self.y_splines_deri_1[k,j] < min_height:
+            if inversion:
+                self.score[j,0] -=100
+                self.score_breakdown[2,j] -= 100
+            else:
+                self.score[j,0] -= 1
+                self.score_breakdown -= 1
+    def update_gforce_score(self,i,j,k,g_force,gpositive,gnegative,inversion):
+        if self.g_force[k,j] <= g_force[1] and self.g_force[k,j] >= g_force[0]:
+            if self.g_force[k,j] > 0:
+                self.score[j,0] += gpositive*abs(self.g_force[k,j]/(2*g_force[1]))
+                self.score_breakdown[3,j] +=  gpositive*abs(self.g_force[k,j]/(2*g_force[1]))
+            else:
+                self.score[j,0] += gnegative*abs(self.g_force[k,j]/g_force[0])
+                self.score_breakdown[4,j] += gnegative*abs(self.g_force[k,j]/g_force[0])
+        elif self.g_force[k,j] > g_force[1]:
+            if inversion:
+                self.score[j,0]-=100
+                self.score_breakdown[5,j] -= 100
+            else:
+                self.score[j,0] -= 1
+                self.score_breakdown[5,j] -= 1
+        else:
+            if inversion:
+                self.score[j,0] -= 100
+                self.score_breakdown[6,j] -= 100
+            else:
+                self.score[j,0] -= 1
+                self.score_breakdown[6,j] -= 1
+    
+    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force,gpositive,gnegative,min_height):
         for i in range(n_generations):
             for j in range(self.n_bots):
                 delta_energy = 0
@@ -192,7 +223,8 @@ class NN_Model():
                 for k in range(self.n_tracksegments):
                     self.penalty_for_moving_sideways(i,j,k,inversion)
                     self.update_inversion_score(i,j,k,inversion,g_force)
-
+                    self.penalty_for_height_voilation(i,j,k,min_height,inversion)
+                    self.update_gforce_score(i,j,k,g_force,gpositive,gnegative,inversion)
                 
 
 
