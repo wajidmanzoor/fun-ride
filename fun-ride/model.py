@@ -56,7 +56,7 @@ class NN_Model():
         self.loop_up = np.zeros((self.n_bots,1))
         self.loop_down = np.zeros((self.n_bots,1))
 
-        for i in range(n_bots):
+        f"""or i in range(n_bots):
             for j in range(self.n_tracksegments):
                 self.next_input[:,i,j]=self.input_vector
         for i in range(n_bots):
@@ -68,9 +68,17 @@ class NN_Model():
                 for k in range(n_inner_neurons):
                     self.weights_2[j,k,i] = 2*np.random.random()-1
             for j in range(n_inner_neurons):
-                self.weights_3[j,1,i] = 2*np.random.random()-1
-                self.bias_1[1,j,i] = 2*np.random.random()-1
-                self.bias_2[1,j,i] = 2*np.random.random()-1    
+                self.weights_3[j,0,i] = 2*np.random.random()-1
+                self.bias_1[0,j,i] = 2*np.random.random()-1
+                self.bias_2[0,j,i] = 2*np.random.random()-1 """ 
+        self.weights_1 = 2*np.random.uniform(size=self.weights_1.shape)-1
+        self.weights_2 =  2*np.random.uniform(size=self.weights_2.shape)-1
+        self.weights_3 =  2*np.random.uniform(size=self.weights_3.shape)-1
+        
+        self.bias_1 =  2*np.random.uniform(size=self.bias_1.shape)-1
+        self.bias_2 =  2*np.random.uniform(size=self.bias_2.shape)-1
+
+
 
     def compute_track_angles(self,i,j,k):
         delta_track_angle = np.tanh(self.next_input[:,j,k].T*self.weights_1[:,:,j]+self.bias_1[:,:,j])
@@ -229,14 +237,86 @@ class NN_Model():
         if verbose:
             for i in range(min(self.n_bots,n)):
                 print(f'{i} Top Score: {sorted_score[i]}')
-        return sorted_score
-
+        return sorted_score,sorted_ind
 
     def update_steepness_score(self,i,j,k,beta):
         self.score[j,0] += beta*abs((self.y_splines[k+1,j]-self.y_splines[k,j])/(5*self.tracksegment_lenght))
         self.score_breakdown[10,j] += beta*abs((self.y_splines[k+1,j]-self.y_splines[k,j])/(5*self.tracksegment_lenght))
 
-    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force,gpositive,gnegative,min_height,min_drop_velocity,alpha,beta,n,verbose=True):
+    def store_nn_for_top_bots(self,sorted_ind,prob):
+        top_taken = max(1,int(prob*self.n_bots))
+        for j in range(top_taken):
+            self.weights_1[:,:,j] = self.weights_1[:,:,sorted_ind[j,0]]
+            self.weights_2[:,:,j] = self.weights_2[:,:,sorted_ind[j,0]]
+            self.weights_3[:,:,j] = self.weights_3[:,:,sorted_ind[j,0]]
+ 
+            self.bias_1[:,:,j] = self.bias_1[:,:,sorted_ind[j,0]]
+            self.bias_2[:,:,j] = self.bias_2[:,:,sorted_ind[j,0]]
+        for j in range(1,5):
+            self.weights_1[:,:,j*top_taken:(j+1)*top_taken] = self.weights_1[:,:,0:top_taken]
+            self.weights_2[:,:,j*top_taken:(j+1)*top_taken] = self.weights_2[:,:,0:top_taken]
+            self.weights_3[:,:,j*top_taken:(j+1)*top_taken] = self.weights_2[:,:,0:top_taken]
+
+            self.bias_1[:,:,j*top_taken:(j+1)*top_taken] = self.bias_1[:,:,0:top_taken]
+            self.bias_2[:,:,j*top_taken:(j+1)*top_taken] = self.bias_2[:,:,0:top_taken]
+        
+
+    def mutate_nn(self,percent_1,percent_2,mutate_prob,max_mutate_percent):
+        taken = (max(1,int(percent_1*self.n_bots)),int(percent_2*self.n_bots))
+        '''for j in range(taken[0],taken[1]):
+            for k in range(self.weights_1.shape[0]):
+                for z in range(self.weights_1.shape[1]):
+                    if np.random.random() < mutate_prob:
+                        self.weights_1[k,z,j] += (2*max_mutate_percent*np.random.random()-max_mutate_percent)
+            for k in range(self.weights_2.shape[0]):
+                for z in range(self.weights_2.shape[1]):
+                    if np.random.random() < mutate_prob:
+                        self.weights_2[k,z,j] += (2*max_mutate_percent*np.random.random()-max_mutate_percent)
+
+            for k in range(self.weights_3.shape[0]):
+                for z in range(self.weights_3.shape[1]):
+                    if np.random.random() < mutate_prob:
+                        self.weights_3[k,z,j] += (2*max_mutate_percent*np.random.random()-max_mutate_percent)
+            for k in range(self.bias_1.shape[0]):
+                for z in range(self.bias_1.shape[1]):
+                    self.bias_1[k,z,j] += (2*max_mutate_percent*np.random.random()-max_mutate_percent)
+                    self.bias_2[k,z,j] += (2*max_mutate_percent*np.random.random()-max_mutate_percent)'''
+        kernel = np.random.uniform(size=(self.weights_1.shape[0],self.weights_1.shape[1],taken[1]-taken[0]))
+        kernel = kernel < mutate_prob
+        self.weights_1[:,:,taken[0]:taken[1]][kernel] += (2*max_mutate_percent*np.random.uniform(size = (self.weights_1.shape[0],self.weights_1.shape[1],taken[1]-taken[0]))-max_mutate_percent)
+
+        kernel = np.random.uniform(size=(self.weights_2.shape[0],self.weights_2.shape[1],taken[1]-taken[0]))
+        kernel = kernel < mutate_prob
+        self.weights_2[:,:,taken[0]:taken[1]][kernel] += (2*max_mutate_percent*np.random.uniform(size = (self.weights_2.shape[0],self.weights_2.shape[1],taken[1]-taken[0]))-max_mutate_percent)
+
+        kernel = np.random.uniform(size=(self.weights_3.shape[0],self.weights_3.shape[1],taken[1]-taken[0]))
+        kernel = kernel < mutate_prob
+        self.weights_3[:,:,taken[0]:taken[1]][kernel] += (2*max_mutate_percent*np.random.uniform(size = (self.weights_3.shape[0],self.weights_3.shape[1],taken[1]-taken[0]))-max_mutate_percent)
+
+        kernel = np.random.uniform(size=(self.bias_1.shape[0],self.bias_1.shape[1],taken[1]-taken[0]))
+        kernel = kernel < mutate_prob
+        self.bias_1[:,:,taken[0]:taken[1]][kernel] += (2*max_mutate_percent*np.random.uniform(size = (self.bias_1.shape[0],self.bias_1.shape[1],taken[1]-taken[0]))-max_mutate_percent)
+
+        kernel = np.random.uniform(size=(self.bias_2.shape[0],self.bias_2.shape[1],taken[1]-taken[0]))
+        kernel = kernel < mutate_prob
+        self.bias_2[:,:,taken[0]:taken[1]][kernel] += (2*max_mutate_percent*np.random.uniform(size = (self.bias_2.shape[0],self.bias_2.shape[1],taken[1]-taken[0]))-max_mutate_percent)
+    
+    
+    
+    def generate_bottom_nn(self,percent_2):
+        self.weights_1[:,:,int(percent_2*self.n_bots):self.n_bots] = 2*np.random.uniform(size=(self.weights_1.shape[0],self.weights_1.shape[1],self.weights_1.shape[2]-int(percent_2*self.weights_1)))-1
+        self.weights_2[:,:,int(percent_2*self.n_bots):self.n_bots] = 2*np.random.uniform(size=(self.weights_2.shape[0],self.weights_2.shape[1],self.weights_2.shape[2]-int(percent_2*self.weights_2)))-1
+        self.weights_3[:,:,int(percent_2*self.n_bots):self.n_bots] = 2*np.random.uniform(size=(self.weights_3.shape[0],self.weights_3.shape[1],self.weights_3.shape[2]-int(percent_2*self.weights_3)))-1
+        self.bias_1[:,:,int(percent_2*self.n_bots):self.n_bots] = 2*np.random.uniform(size=(self.bias_1.shape[0],self.bias_1.shape[1],self.bias_1.shape[2]-int(percent_2*self.bias_1)))-1
+        self.bias_2[:,:,int(percent_2*self.n_bots):self.n_bots] = 2*np.random.uniform(size=(self.bias_2.shape[0],self.bias_2.shape[1],self.bias_2.shape[2]-int(percent_2*self.bias_2)))-1
+                                           
+
+
+
+
+
+
+    def run(self,n_generations,drag_coeff,friction_coeff,inversion,g_force,gpositive,gnegative,min_height,min_drop_velocity,alpha,beta,n,percent_1 = 0.1,percent_2 = 0.5,mutate_prob = 0.4,verbose=True):
         for i in range(n_generations):
             for j in range(self.n_bots):
                 delta_energy = 0
@@ -266,8 +346,10 @@ class NN_Model():
                     self.update_velocity_score(i,j,k,inversion,alpha)
                     self.penalty_for_velocity_voilation(i,j,k,min_drop_velocity,inversion)
                     self.update_steepness_score(i,j,k,beta)
-                    sorted_score = self.sort_normalize_score(n,verbose)
-
+            sorted_score , sorted_ind = self.sort_normalize_score(n,verbose)
+            self.store_nn_for_top_bots(sorted_ind,percent_1)
+            self.mutate_nn(percent_1,percent_2,mutate_prob)
+            self.generate_bottom_nn(percent_2)
 
 
 
