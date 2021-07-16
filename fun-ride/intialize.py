@@ -1,4 +1,4 @@
-from .nn_parameters import track_lenght,tracksegment_lenght,n_inner_neurons
+from .nn_parameters import track_lenght,tracksegment_lenght,n_inner_neurons,n_bots
 from .coaster_parameters import intial_velocity,max_height ,intial_height,intial_track_angle
 import numpy as np
 g = 9.81
