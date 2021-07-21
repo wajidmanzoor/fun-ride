@@ -409,11 +409,29 @@ class NN_Model():
             self.store_nn_for_top_bots(sorted_ind,percent_1)
             self.mutate_nn(percent_1,percent_2,mutate_prob,max_mutate_prob)
             self.generate_bottom_nn(percent_2)
+            #mutated bots 
+            n_mutated_plot = max(1,int(percent_2*self.n_bots))
+            plt.cla()
+            plot_mutated = True
+            if plot_mutated:
+                for j in range(1,n_mutated_plot):
+                    plt.plot(self.x_nodes[:,sorted_ind[j]],self.y_splines[:,sorted_ind[j]],'g')
+                    plt.pause(0.05)
             if plot_hilloff and self.intial_height > 4:
-                plt.plot([0.0]+list(self.x_nodes[:,sorted_ind[0]]),[self.intial_height]+list(self.y_splines[:,sorted_ind[0]]))
+                plt.plot([-(self.intial_height+25),-(self.intial_height+2),-2,0],[2,2,self.intial_height,self.intial_height],'b')
+                plt.plot([0.0]+list(self.x_nodes[:,sorted_ind[0]]),[self.intial_height]+list(self.y_splines[:,sorted_ind[0]]),'b')
+                plt.pause(1)
             else:
-                plt.plot(self.x_nodes[:,sorted_ind[0]],self.y_splines[:,sorted_ind[0]])
-            break
+                plt.plot(self.x_nodes[:,sorted_ind[0]],self.y_splines[:,sorted_ind[0]],'b')
+                plt.pause(1)
+        
+        if   plot_hilloff and self.intial_height >4:
+            plt.plot([-(self.intial_height+25),-(self.intial_height+12),-2,0],[2,2,self.intial_height,self.intial_height],'k')
+            plt.plot([0.0]+list(self.x_nodes[:,sorted_ind[1]]),[self.intial_height]+list(self.y_splines[:,sorted_ind[1]]),'k') 
+        else:
+            plt.plot(self.x_nodes[:,sorted_ind[1]],self.y_splines[:,sorted_ind[1]],'k') 
+
+
             
 
 
@@ -445,7 +463,7 @@ beta = 0
 
 a = NN_Model(n_bots,track_lenght,tracksegment_lenght,n_inner_neurons,intial_velocity,max_height,intial_height, intial_track_angle)
 
-his = a.run(n_generations,drag_coef,friction_coef,inversion,g_force,gpositive,gnegative,min_height,min_drop_velocity,alpha,beta,n=5,percent_1 = 0.1,percent_2 = 0.5,mutate_prob = 0.4,plot_hilloff = True,verbose=True)
+his = a.run(n_generations,drag_coef,friction_coef,inversion,g_force,gpositive,gnegative,min_height,min_drop_velocity,alpha,beta,n=5,percent_1 = 0.1,percent_2 = 0.5,mutate_prob = 0.4,plot_hilloff = True,verbose=False)
 """print('Weights')
 print(a.weights_1)
 print(a.weights_2)
